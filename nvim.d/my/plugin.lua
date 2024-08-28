@@ -147,7 +147,7 @@ packer.startup(function(use, use_rocks)
   -- }
 
   -- which key
-  use "folke/which-key.nvim"
+  use {"folke/which-key.nvim", tag = "v2.1.0"}
 
   -- Colorscheme
   use 'Mofiqul/vscode.nvim'
@@ -196,7 +196,7 @@ packer.startup(function(use, use_rocks)
   use 'JoosepAlviste/nvim-ts-context-commentstring'
 
   -- Git
-  use "lewis6991/gitsigns.nvim"
+  use 'lewis6991/gitsigns.nvim'
 
   -- Explorer
   use 'kyazdani42/nvim-web-devicons'
