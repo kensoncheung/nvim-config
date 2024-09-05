@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if node --version | head -n1 | grep -vq v18; then
+  echo "expected nodejs v18, aborting..."
+  exit 1
+fi
+
 if nvim --version | head -n1 | grep -vq 0.10; then
   echo "expected nvim 0.10, aborting..."
   exit 1
