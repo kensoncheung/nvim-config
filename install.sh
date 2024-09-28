@@ -15,9 +15,16 @@ if pip3 list | grep pynvim | grep -vq pynvim; then
   exit 1
 fi
 
-if tmux -V | grep -vq 3.4; then
-  echo "expected tmux 3.4, aborting..."
-  exit 1
+if [[ $(uname) == "Darwin" ]]; then
+  if tmux -V | grep -vq 3.5; then
+    echo "expected tmux 3.5, aborting..."
+    exit 1
+  fi
+else
+  if tmux -V | grep -vq 3.4; then
+    echo "expected tmux 3.4, aborting..."
+    exit 1
+  fi
 fi
 
 if ! which rg > /dev/null; then
@@ -25,9 +32,16 @@ if ! which rg > /dev/null; then
   exit 1
 fi
 
-if ! which fdfind > /dev/null; then
-  echo "fdfind not found, aborting..."
-  exit 1
+if [[ $(uname) == "Darwin" ]]; then
+  if ! which fd > /dev/null; then
+    echo "fd not found, aborting..."
+    exit 1
+  fi
+else
+  if ! which fdfind > /dev/null; then
+    echo "fdfind not found, aborting..."
+    exit 1
+  fi
 fi
 
 if ! which fzf > /dev/null; then
