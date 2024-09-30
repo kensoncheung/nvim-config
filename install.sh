@@ -84,7 +84,7 @@ fi
 tmux source-file ~/.tmux.conf
 echo "Reload tmux done"
 
-
+[ ! -d ~/nvim-cofig ] && ln -s ${base_dir}/nvim-config ~/nvim-config
 [ -f ~/.bash_aliases ] && rm ~/.bash_aliases
 [ -f ~/.bash_aliases_shared ] && rm ~/.bash_aliases_shared
 [ -f ~/.ssh/config ] && rm ~/.ssh/config
