@@ -84,7 +84,6 @@ fi
 tmux source-file ~/.tmux.conf
 echo "Reload tmux done"
 
-[ ! -d ~/nvim-cofig ] && ln -s ${base_dir}/nvim-config ~/nvim-config
 [ -f ~/.bash_aliases ] && rm ~/.bash_aliases
 [ -f ~/.bash_aliases_shared ] && rm ~/.bash_aliases_shared
 [ -f ~/.ssh/config ] && rm ~/.ssh/config
@@ -95,6 +94,7 @@ if [[ $(uname) == "Darwin" ]]; then
 else
   base_dir="/home/kensoncheung/kensoncheung/dev-tools/env"
 fi
+[ ! -d ~/nvim-cofig ] && ln -s ${base_dir}/nvim-config ~/nvim-config
 ln -s ${base_dir}/bash_aliases ~/.bash_aliases
 ln -s ${base_dir}/bash_aliases_shared ~/.bash_aliases_shared
 ln -s ${base_dir}/ssh/config ~/.ssh/config
