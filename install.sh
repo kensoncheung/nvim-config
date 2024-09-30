@@ -90,15 +90,16 @@ echo "Reload tmux done"
 [ -f ~/.gitconfig ] && rm ~/.gitconfig
 [ -f ~/.zshrc ] && rm ~/.zshrc
 if [[ $(uname) == "Darwin" ]]; then
-  base_dir="/Users/kensoncheung/kensoncheung/dev-tools/env"
+  homedir="/Users/kensoncheung"
 else
-  base_dir="/home/kensoncheung/kensoncheung/dev-tools/env"
+  homedir="/home/kensoncheung"
 fi
-[ ! -d ~/nvim-cofig ] && ln -s ${base_dir}/nvim-config ~/nvim-config
-ln -s ${base_dir}/bash_aliases ~/.bash_aliases
-ln -s ${base_dir}/bash_aliases_shared ~/.bash_aliases_shared
-ln -s ${base_dir}/ssh/config ~/.ssh/config
-ln -s ${base_dir}/gitconfig ~/.gitconfig
-ln -s ${base_dir}/zshrc ~/.zshrc
+[ ! -d ~/nvim-config ] && ln -s ${homedir}/kensoncheung/nvim-config ~/nvim-config
+basedir="${homedir}/kensoncheung/dev-tools/env"
+ln -s ${basedir}/bash_aliases ~/.bash_aliases
+ln -s ${basedir}/bash_aliases_shared ~/.bash_aliases_shared
+ln -s ${basedir}/ssh/config ~/.ssh/config
+ln -s ${basedir}/gitconfig ~/.gitconfig
+ln -s ${basedir}/zshrc ~/.zshrc
 echo "bash_aliases and git config Symlinks done"
 
