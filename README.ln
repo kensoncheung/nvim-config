@@ -52,6 +52,8 @@ Environment
     pip3 install --user --upgrade pynvim
     (in vim) <leader>ps    # to sync the packer cache
 
+    python ~/.cache/nvim/packer_hererocks/hererocks.py --verbose -j 2.1.0-beta3 -r latest ~/.cache/nvim/packer_hererocks/2.1.1703358377
+
   build essential packages for compiling fzf-native
     ubuntu
       apt-get install build-essential
