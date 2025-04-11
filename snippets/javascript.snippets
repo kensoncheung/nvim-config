@@ -300,12 +300,11 @@ snippet jsonb_agg "jsonb_agg - aggregate as jsonb array"
 	jsonb_agg($0)
 snippet jsonb_object_agg "jsonb_object_agg - aggregate as jsonb object"
 	jsonb_object_agg($0, $1)
-snippet aa "anonymous async (for testing js)"
-	const fn1 = async () => {
-		$0
-		console.log(123);
-	};
-	fn1().then(R.identity);
+snippet aa "IIFE (Immediately Invoked Function Expression)"
+  const r = await (async () => {
+    console.log("IIFE (Immediately Invoked Function Expression)")
+    return 1;
+  })();
 snippet reduce "ramda reduce"
 	R.reduce((arr, item) => R.append(item, arr), [], [1, 2, 3, 4])
 snippet dev "eslint disable import"

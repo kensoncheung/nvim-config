@@ -110,3 +110,12 @@ snippet json
 	pre= JSON.stringify($0, null, 2)
 snippet ssicon
   +ssicon("vaadin_puzzle-piece", rem(17))
+snippet data-submit-on-change "data-submit-on-change"
+	data-submit-on-change={
+		form: "parent",
+		method: "get",
+		action: "/hello",
+		replacing: ".dependent",
+		stopPropagation: false,
+		disableVF: true,
+	}

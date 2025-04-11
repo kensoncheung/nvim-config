@@ -28,6 +28,11 @@ Environment
       svi /etc/sysctl.conf
         fs.inotify.max_user_watches=524288
         fs.inotify.max_user_instances=524288
+      svi /etc/security/limits.conf
+        * soft nofile 100001
+        * hard nofile 100002
+        root soft nofile 100001
+        root hard nofile 100002
       reboot
 
   libssl.so is missing (ubuntu 22.04)
@@ -37,7 +42,7 @@ Environment
 
   nodejs 18, eslint
     sudo apt remove nodejs libnode-dev libnode72
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt install -y nodejs
     sudo npm install -g eslint
 
