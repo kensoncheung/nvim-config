@@ -147,7 +147,7 @@ packer.startup(function(use, use_rocks)
   -- }
 
   -- which key
-  use {"folke/which-key.nvim", tag = "v2.1.0"}
+  use "folke/which-key.nvim"
 
   -- Colorscheme
   use 'Mofiqul/vscode.nvim'
