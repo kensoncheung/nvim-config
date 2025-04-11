@@ -28,9 +28,8 @@ require("lspconfig").eslint.setup {}
 require("lspconfig").bashls.setup {}
 -- require("lspconfig").pyright.setup {}
 
--- pip install ruff_lsp
--- https://github.com/astral-sh/ruff-lsp
-require("lspconfig").ruff_lsp.setup {
+-- curl -LsSf https://astral.sh/ruff/install.sh | sh
+require("lspconfig").ruff.setup {
   on_attach = function(client, bufnr)
 		if client.supports_method("textDocument/formatting") then
 			vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
