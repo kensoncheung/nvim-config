@@ -71,6 +71,15 @@ packer.startup(function(use, use_rocks)
   use "tomtom/tlib_vim"                 -- provided string#Strip, used in the lokinote bullet style switching shortcut
   use "rcarriga/nvim-notify"
 
+  -- Gemini AI plugin
+  use {
+    'kiddos/gemini.nvim',
+    run = ":GeminiInstall",
+    config = function()
+      require("gemini").setup()
+    end,
+  }
+
   -- ai code completion
   -- use {
   --   'Exafunction/codeium.vim',
@@ -177,7 +186,7 @@ packer.startup(function(use, use_rocks)
   -- LSP
   use {
     "williamboman/mason.nvim",
-    "williamboman/mason-lspconfig.nvim",
+    {"williamboman/mason-lspconfig.nvim", tag = "v1.32.0"},
     "neovim/nvim-lspconfig",
   }
   -- use "williamboman/nvim-lsp-installer"
