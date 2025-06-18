@@ -69,6 +69,9 @@ map("n", "<c-l>", '<cmd>lua vim.diagnostic.goto_next({ float = false })<cr>', op
 map("n", "<c-m-]>", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
 map("n", "<c-]>", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
 map("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
+-- Gemini specific
+map("n", "ajd", ":GeminiTask Add JsDoc<cr>", opts)
+map("n", "aa", ":GeminiApply<cr>", opts)
 
 -- Insert
 map("i", "jk", "<esc>", opts)
