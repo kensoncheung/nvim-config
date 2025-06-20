@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+#
+# Changelog Generator Script
+#
+# This script fetches git commits between two tags, sends them to the Gemini API,
+# and prints a formatted changelog.
+#
+# Usage:
+#   ./generate-changelog.sh <start_tag> <end_tag>
+#
+# Example:
+#   ./generate-changelog.sh 1.0.0 1.1.0
+
+set -e # Exit immediately if a command exits with a non-zero status.
+# set -x # Print each command before executing (for debugging).
+
+# 1. Validate that exactly two arguments were passed to the script.
+if [[ "$#" -ne 2 ]]; then
+  echo "Error: Incorrect number of arguments." >&2
+  echo "Usage: $0 <start_tag> <end_tag>" >&2
+  exit 1
+fi
+
+# Check for dependencies (curl and jq)
+if ! command -v curl &> /dev/null; then
+    echo "Error: 'curl' is not installed. Please install it to continue." >&2
+    exit 1
+fi
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' is not installed. Please install it to continue." >&2
+    exit 1
+fi
+
+# Check for the Gemini API Key
+if [[ -z "$GEMINI_API_KEY" ]]; then
+    echo "Error: The GEMINI_API_KEY environment variable is not set." >&2
+    echo "Please set it before running the script." >&2
+    exit 1
+fi
+
+# 2. Assign arguments to descriptive variables.
+START_TAG="$1"
+END_TAG="$2"
+
+# 3. Fetch all tags from all remotes to ensure they are available locally.
+# Using `git fetch --all --tags` is more robust than `git pull`.
+echo "Fetching latest data and tags from all remotes..."
+git fetch --all --tags --quiet
+echo "Fetch complete."
+
+# 4. Get the raw, multi-line commit logs between the two tags.
+# The format '%B' prints the raw commit message body.
+# We add a separator to make the output easy for other scripts to parse.
+echo "Gathering commit messages between ${START_TAG} and ${END_TAG}..."
+COMMIT_LOGS=$(git log --pretty=format:'%B%n--------------------%n' "${START_TAG}".."${END_TAG}")
+
+if [[ -z "$COMMIT_LOGS" ]]; then
+  echo "No commit messages found between these tags." >&2
+  exit 1
+fi
+
+# 5. Construct the prompt for the AI model.
+# Using printf is more robust for handling special characters than a HEREDOC.
+PROMPT_TEMPLATE="You are a release manager writing a changelog. Based on the following git commit messages, generate a formatted changelog for the release from version %s to %s.
+
+Group the changes by their type (e.g., \"New Features\", \"Bug Fixes\", \"Documentation\", \"Performance Improvements\", \"Internal Changes\") and remove the type from individual item message.
+
+Each item in the list should be a concise summary of the change.
+- Group Trivial Commits: Insignificant or minor commits should be aggregated into a single, meaningful summary line.
+  - Example:
+    - Original Commits: \"Fixed test cases.\", \"Made other minor changes.\", \"Fixed a default data issue in the overtime-record csform.\"
+    - Required Summary: - Implemented several minor fixes and improvements.
+- Merge Duplicate Concepts: Commits that refer to the same feature or task should be merged into one clear statement.
+  - Example:
+    - Original Commits: \"Modified seed data for development.\", \"Reviewed and modified seed data.\"
+    - Required Summary: - Revised development seed data.
+
+Make sure the output is well-formatted HTML.
+Use the following format:
+  <h4>Change Log (${END_TAG})</h4>
+  <h5>New Features</h5>
+  <ul>...</ul>
+  <h5>Bug Fixes</h5>
+  <ul>...</ul>
+  <h5>Documentation</h5>
+  <ul>...</ul>
+  <h5>Performance Improvements</h5>
+  <ul>...</ul>
+  <h5>Internal Changes</h5>
+  <ul>...</ul>
+
+Remove the category if there is no items.
+
+Here are the raw commit messages:
+---
+%s
+---"
+# We use printf to safely inject our variables into the template.
+PROMPT=$(printf "$PROMPT_TEMPLATE" "$START_TAG" "$END_TAG" "$COMMIT_LOGS")
+
+
+# 6. Use jq to create the JSON payload for the Gemini API.
+JSON_PAYLOAD=$(jq -n \
+  --arg prompt "$PROMPT" \
+  '{ "contents": [ { "parts": [ { "text": $prompt } ] } ] }')
+
+# 7. Call the Gemini API and store the raw response.
+echo "Sending data to the Gemini API for processing..."
+RAW_RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d "$JSON_PAYLOAD")
+
+# --- DEBUGGING STEP ---
+# Print the raw response from the server to help diagnose JSON parsing issues.
+# echo "--- Raw Server Response ---"
+# echo "${RAW_RESPONSE}"
+# echo "-------------------------"
+# --- END DEBUGGING STEP ---
+
+
+# 8. Parse the raw response with jq to extract the changelog text.
+# The path in the Gemini response is different from the vLLM response.
+CHANGELOG=$(echo "${RAW_RESPONSE}" | jq -r '.candidates[0].content.parts[0].text')
+
+if [[ -z "$CHANGELOG" || "$CHANGELOG" == "null" ]]; then
+    echo "Error: Failed to parse a valid changelog from the Gemini API response." >&2
+    echo "Please check the 'Raw Server Response' above for potential errors." >&2
+    exit 1
+fi
+
+# 9. Clean the output by removing markdown code fences that Gemini might add.
+CLEANED_HTML_FRAGMENT=$(echo "$CHANGELOG" | awk '/^```html/{p=1;next} /^```$/{p=0} p')
+
+echo -e "Changelog: $CHANGELOG"
+echo -e "Cleaned: $CLEANED_HTML_FRAGMENT"
+
+# 10. Write the HTML to a temporary file, wrapping it in a full document structure for robustness.
+OUTPUT_FILE="/tmp/changelog-$(date +%Y%m%d).html"
+cat <<EOF > "$OUTPUT_FILE"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog for ${END_TAG}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; padding: 2em; max-width: 800px; margin: 0 auto; }
+        h2, h3 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 0.3em;}
+        ul { list-style-type: disc; padding-left: 20px; }
+        li { margin-bottom: 0.5em; }
+    </style>
+</head>
+<body>
+    ${CLEANED_HTML_FRAGMENT}
+</body>
+</html>
+EOF
+echo "Changelog saved to: $OUTPUT_FILE"
+
+# 11. Open the generated HTML file in Google Chrome.
+echo "Opening changelog in Google Chrome..."
+if [[ "$(uname)" == "Darwin" ]]; then # macOS
+    open -a "Google Chrome" "$OUTPUT_FILE"
+elif [[ "$(uname)" == "Linux" ]]; then
+    # Try common names for Google Chrome on Linux
+    if command -v google-chrome &> /dev/null; then
+        google-chrome "$OUTPUT_FILE"
+    elif command -v google-chrome-stable &> /dev/null; then
+        google-chrome-stable "$OUTPUT_FILE"
+    else
+        echo "Could not find 'google-chrome' command. Please open the file manually."
+    fi
+else
+    echo "Unsupported OS. Please open the file manually in your browser:"
+    echo "$OUTPUT_FILE"
+fi
+
+# # 9. Display the final changelog.
+# echo -e "\n--- Generated Changelog for ${END_TAG} ---\n"
+# echo -e "$CHANGELOG"
