@@ -48,6 +48,12 @@ echo "Fetching latest data and tags from all remotes..."
 git fetch --all --tags --quiet
 echo "Fetch complete."
 
+END_TAG_DATE=$(git log -1 --format=%ai "${END_TAG}" | cut -d ' ' -f 1)
+if [[ -z "$END_TAG_DATE" ]]; then
+  echo "Error: Could not find a date for the tag '${END_TAG}'." >&2
+  exit 1
+fi
+
 # 4. Get the raw, multi-line commit logs between the two tags.
 # The format '%B' prints the raw commit message body.
 # We add a separator to make the output easy for other scripts to parse.
@@ -77,7 +83,10 @@ Each item in the list should be a concise summary of the change.
 
 Make sure the output is well-formatted HTML.
 Use the following format:
-  <h4>Change Log (${END_TAG})</h4>
+  <h4>Release ${END_TAG}</h4>
+  <p><strong>Published Date: </strong>${END_TAG_DATE}</p>
+  <p><strong>Previous Release: </strong>${START_TAG}</p>
+  <hr />
   <h5>New Features</h5>
   <ul>...</ul>
   <h5>Bug Fixes</h5>
