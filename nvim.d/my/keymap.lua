@@ -70,7 +70,7 @@ map("n", "<c-m-]>", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
 map("n", "<c-]>", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
 map("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
 -- Gemini specific
-map("n", "ad", ":GeminiTask Add or amend JsDoc to reflect the latest function signature to all public functions (exported ones) but do not make any change to the function body. When there is only 1 'object' type parameter, name it as 'options' when writing the JsDoc.<cr>", opts)
+map("n", "ad", ":GeminiTask Add or amend JsDoc to reflect the latest function signature to all public functions (exported ones) but **DO NOT** make any change to the function body. When there is only 1 'object' type parameter, name it as 'options' when writing the JsDoc.<cr>", opts)
 map("n", "ax", ":GeminiTask Ensure all the functions to use named parameter with 1 object only, if the function uses 'knex', you will add trx = knex to the signature and update function body as well. e.g. get({id}) => get({id, trx = knex}) and create({name}, trx = knex) => create({name, trx = knex}). Afterwards update the JsDoc to reflect the latest function signature.'.<cr>", opts)
 map("n", "aa", ":GeminiApply<cr>", opts)
 
