@@ -76,7 +76,11 @@ packer.startup(function(use, use_rocks)
     'kiddos/gemini.nvim',
     run = ":GeminiInstall",
     config = function()
-      require("gemini").setup()
+      require("gemini").setup({
+        completion = {
+          enabled = false,
+        }
+      })
     end,
   }
 
