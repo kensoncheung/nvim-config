@@ -3,6 +3,7 @@ if not status_ok then
   return
 end
 
+local core = require("nvim-tree.core")
 local lib = require("nvim-tree.lib")
 local view = require("nvim-tree.view")
 local open_file = require('nvim-tree.actions.node.open-file')
@@ -26,7 +27,10 @@ local function on_attach(bufnr)
       lib.expand_or_collapse(node)
     else
       open_file.fn("edit", node.absolute_path)
-      view.close()
+      local explorer = core.get_explorer()
+      if explorer then
+        explorer.view:close(nil, "open-file.open_file_in_tab")
+      end
     end
   end
   vim.keymap.set('n', '<c-j>', open, opts('Toggle directory or edit file'))
