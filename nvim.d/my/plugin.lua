@@ -74,7 +74,6 @@ packer.startup(function(use, use_rocks)
   -- Gemini AI plugin
   use {
     'kiddos/gemini.nvim',
-    run = ":GeminiInstall",
     config = function()
       require("gemini").setup({
         completion = {
