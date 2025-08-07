@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+
+# Check if the required number of arguments are provided
+if [[ "$4" = "" ]]; then
+  # Display usage message if not enough arguments are provided
+  echo "Usage: llm-rewrite <filepath> <filetype> <startln> <endln>"
+  exit 0
+fi
+
+# Check if the required commands are available
+if ! command -v diffuse &> /dev/null || ! command -v jq &> /dev/null || ! command -v curl &> /dev/null; then
+  # Display error message and exit if any of the required commands are not found
+  echo "One or more required commands are missing:"
+  echo "- diffuse"
+  echo "- jq"
+  echo "- curl"
+  any-key
+  exit 0
+fi
+
+# Assign command line arguments to variables
+filepath="$1"
+filetype="$2"
+startln="$3"
+endln="$4"
+guide="no coding guide is provided"
+guidefile=".devbase/guides/${filetype}.md"
+
+get_guide() {
+  # Check if the guide file exists
+  if [[ -f "$guidefile" ]]; then
+    # Read the content of the guide file
+    local guidecontent=$(cat "$guidefile")
+    guide="$guidecontent"
+
+    # Replace "#include <relative path>" with the file content
+    while IFS= read -r line; do
+      # Check if the line starts with "#include "
+      if [[ $line =~ ^'#include ' ]]; then
+        # Extract the file path from the "#include " line
+        local filepath=$(echo "$line" | sed -r 's/.*#include (.*)/\1/')
+        # Check if the included file exists
+        if [[ -f "$filepath" ]]; then
+          # Read the content of the included file
+          local linkcontent=$(cat "$filepath")
+          # Replace the "#include " line with the included file content
+          guide=${guide//$line/$linkcontent}
+        fi
+      fi
+    done <<< "$guidecontent"
+  fi
+}
+
+get_guide
+
+# Extract the content between the specified line numbers from the file
+content=$(sed -n "${startln},${endln}p" "$filepath")
+
+# Calculate the indentation level of the extracted content
+indentation_level=$(echo "$content" | sed -n '1{s/[^[:space:]].*//p;q}' | wc -c)
+indentation_level=$((indentation_level - 1))
+
+# Prompt the user to enter their query
+echo "Enter your prompt (Ctrl-D Ctrl-D to submit / Ctrl-C to cancel):"
+# Read the user's query
+userquery=$(cat)
+# Note: The variable '$text' is not defined in the given code snippet, so the following line is kept as is
+echo "$text"
+
+# Define the vllm API endpoint URL
+vllm="https://askgenie-api.oagpuservices.com"
+# Extract the filename from the filepath
+filename=$(basename "$filepath")
+
+gen() {
+  prompt="
+    You are an expert of programming. Your task is to assists the user to enhance their code.
+
+    File name: ${filename}
+    Programming language: ${filetype}
+
+    *User highlighted code snippet*:
+    <code>
+      ${content}
+    </code>
+
+    *User query*:
+    <user_query>
+      ${userquery}
+    </user_query>
+
+    *Instructions*:
+    1. Output the revised code in a codeblock.
+    2. Output only the code, but nothing else. Do not output any thinking process and explanation.
+    3. Align to the coding style that user submitted as much as you can.
+    4. Your output code will be used to replace the user submitted code directly, so mind the indentation and scoping.
+
+    *Example*:
+    \`\`\`python
+    print \"hello world\"
+    \`\`\`
+
+    *Example*:
+    \`\`\`javascript
+    console.log(\"hello world\");
+    \`\`\`
+  "
+  # Create a JSON payload with the user prompt and max tokens
+  json=$(jq -n --arg guide "$guide" --arg content "$prompt" '{
+    messages: [{role: "user", content: $guide},{role: "user", content: $content}],
+    max_tokens: 512,
+    temperature: 0.7,
+    top_p: 0.8,
+  }')
+
+  # Send a POST request to the vLLM API and extract the response content
+  out=$(
+    curl -s -X POST \
+      "${vllm}/v1/chat/completions" \
+      -H 'accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -d "$json" | jq -r '.choices[0].message.content'
+  )
+
+  # remove the first and last line to return (extract code from the markdown code block)
+  echo "$out" | sed '1d;$d'
+}
+
+replace_code_in_file() {
+  local filepath=$1 startln=$2 endln=$3 code=$4
+
+  # Create a temporary file to store the code to be inserted
+  local tmpfile=$(mktemp)
+
+  # Indent the code and write it to a temporary file
+  echo "$code" | sed "s/^/$(printf '%*s' $indentation_level '')/" > "$tmpfile"
+
+  # Create a backup of the original file
+  local backupfile=$(mktemp)
+  cp "$filepath" "$backupfile"
+
+  # Replace the specified lines in the file with the contents of the temporary file
+  sed -i -e "${startln},${endln}d" -e "$((startln - 1))r ${tmpfile}" "$filepath"
+  rm "$tmpfile"
+
+  # Compare the modified file with the backup
+  diffuse "$backupfile" "$filepath"
+  rm "$backupfile"
+}
+
+echo "generating code..."
+code=$(gen "$userquery")
+replace_code_in_file "$filepath" "$startln" "$endln" "$code"

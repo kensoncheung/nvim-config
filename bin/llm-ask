@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# Check if the required number of arguments are provided
+if [[ "$4" = "" ]]; then
+  # Display usage message if not enough arguments are provided
+  echo "Usage: llm-ask <filepath> <filetype> <startln> <endln>"
+  exit 0
+fi
+
+# Check if the required commands are available
+if ! command -v diffuse &> /dev/null || ! command -v jq &> /dev/null || ! command -v curl &> /dev/null; then
+  # Display error message and exit if any of the required commands are not found
+  echo "One or more required commands are missing:"
+  echo "- diffuse"
+  echo "- jq"
+  echo "- curl"
+  any-key
+  exit 0
+fi
+
+# Assign command line arguments to variables
+filepath="$1"
+filetype="$2"
+startln="$3"
+endln="$4"
+
+# Extract the content between the specified line numbers from the file
+content=$(sed -n "${startln},${endln}p" "$filepath")
+
+# Prompt the user to enter their query
+echo "Enter your prompt (Ctrl-D Ctrl-D to submit / Ctrl-C to cancel):"
+# Read the user's query
+userquery=$(cat)
+# Note: The variable '$text' is not defined in the given code snippet, so the following line is kept as is
+echo "$text"
+
+# Define the vllm API endpoint URL
+vllm="https://askgenie-api.oagpuservices.com"
+# Extract the filename from the filepath
+filename=$(basename "$filepath")
+
+gen() {
+  prompt="
+    You are an expert of programming. Your task is to read user codes and answer their questions.
+
+    File name: ${filename}
+    Programming language: ${filetype}
+
+    *User highlighted code snippet*:
+    <code>
+      ${content}
+    </code>
+
+    *User query*:
+    <user_query>
+      ${userquery}
+    </user_query>
+
+    *Instructions*:
+    1. Answer directly and precisely.
+  "
+  # Create a JSON payload with the user prompt and max tokens
+  json=$(jq -n --arg content "$prompt" '{
+    messages: [{role: "user", content: $content}],
+    max_tokens: 512,
+    temperature: 0.7,
+    top_p: 0.8,
+  }')
+
+  # Send a POST request to the vLLM API and extract the response content
+  out=$(
+    curl -s -X POST \
+      "${vllm}/v1/chat/completions" \
+      -H 'accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -d "$json" | jq -r '.choices[0].message.content'
+  )
+  echo "$out"
+}
+
+echo "generating answer..."
+gen "$userquery"
+any-key
