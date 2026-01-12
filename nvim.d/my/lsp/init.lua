@@ -1,9 +1,6 @@
 local ok1, _ = pcall(require, "lspconfig")
 if not ok1 then return end
 
--- local ok2, lsp_installer = pcall(require, "nvim-lsp-installer")
--- if not ok2 then return end
-
 local ok2, mason = pcall(require, "mason")
 if not ok2 then return end
 
@@ -16,98 +13,64 @@ if not ok4 then return end
 local ok5, masonlsp = pcall(require, "mason-lspconfig")
 if not ok5 then return end
 
---[[ tail -f  ~/.local/state/nvim/lsp.log ]]
-
+-- Setup Mason (Installer)
 mason.setup()
 masonlsp.setup {
-  ensure_installed = { "eslint", "bashls", "pyright" },
+  ensure_installed = { "eslint", "bashls", "pyright", "ruff" },
 }
 
-require("lspconfig").eslint.setup {}
--- require("lspconfig").tsserver.setup {}
-require("lspconfig").bashls.setup {}
--- require("lspconfig").pyright.setup {}
+-- =============================================================================
+--  LSP CONFIGURATION (Neovim 0.11+)
+-- =============================================================================
 
--- curl -LsSf https://astral.sh/ruff/install.sh | sh
-require("lspconfig").ruff.setup {
+-- 1. Capabilities (Required for nvim-cmp autocompletion)
+local capabilities = cmp_nvim_lsp.default_capabilities()
+
+-- 2. Global Keymaps (Modern replacement for 'on_attach')
+-- This runs automatically whenever ANY LSP attaches to a buffer
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+  callback = function(ev)
+    local opts = { buffer = ev.buf, silent = true }
+    local map = vim.keymap.set
+
+    -- Your custom keymaps
+    map("n", "<c-h>", vim.diagnostic.goto_prev, opts)
+    map("n", "<c-l>", vim.diagnostic.goto_next, opts)
+    map("n", "<c-m-]>", vim.lsp.buf.hover, opts)
+    map("n", "<c-]>", vim.lsp.buf.definition, opts)
+    map("n", "<leader>rn", vim.lsp.buf.rename, opts)
+  end,
+})
+
+-- 3. Configure & Enable Standard Servers
+-- We loop through servers that just need default config + capabilities
+local servers = { "eslint", "bashls", "pyright" }
+
+for _, server in ipairs(servers) do
+  vim.lsp.config(server, {
+    capabilities = capabilities,
+  })
+  vim.lsp.enable(server)
+end
+
+-- 4. Configure & Enable Ruff (Custom Logic)
+vim.lsp.config("ruff", {
+  capabilities = capabilities,
   on_attach = function(client, bufnr)
-		if client.supports_method("textDocument/formatting") then
-			vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
-			-- vim.api.nvim_create_autocmd("BufWritePre", {
-			-- 	group = augroup,
-			-- 	buffer = bufnr,
-			-- 	callback = function()
-			-- 		vim.lsp.buf.format()
-			-- 	end,
-			-- })
-		end
-	end,
-}
+    -- Disable formatting for Ruff if you want to use something else,
+    -- or keep your specific logic here.
+    if client.supports_method("textDocument/formatting") then
+      vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
+    end
+  end,
+})
+vim.lsp.enable("ruff")
 
--- local on_attach = function(client, bufnr)
---   local opts = { noremap = true, silent = true }
---   local map = vim.api.nvim_buf_set_keymap
---   map(bufnr, "n", "<c-h>", '<cmd>lua vim.diagnostic.goto_prev({ float = false })<cr>', opts)
---   map(bufnr, "n", "<c-l>", '<cmd>lua vim.diagnostic.goto_next({ float = false })<cr>', opts)
---   map(bufnr, "n", "<c-m-]>", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
---   map(bufnr, "n", "<c-]>", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
---   map(bufnr, "n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
--- end
 
--- lsp_installer.on_server_ready(function(server)
---   local opts = {
---     on_attach = on_attach,
---     capabilities = cmp_nvim_lsp.default_capabilities(),
---   }
---
---   -- refs for all LSP servers
---   -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md
---   if (server.name == "grammarly") then
---     opts.filetypes = { "markdown", "rst", "html", "lokinote" }
---   end
---
---   -- if (server.name == "sqls") then
---   --   opts.settings = {
---   --     sqls = {
---   --       lowercaseKeywords = false,
---   --       connections = {
---   --         {
---   --           driver = 'postgresql',
---   --           dataSourceName = 'host=127.0.0.1 port=15432 user=farmweb password=farmweb321 dbname=farmweb',
---   --         }
---   --       }
---   --     }
---   --   }
---   -- end
---
---   if server.name == "ltex" then
---     opts.filetypes = { "lokinote", "bib", "gitcommit", "markdown", "org", "plaintex", "rst", "rnoweb", "tex" }
---   end
---
---   if server.name == "tsserver" then
---     local tsserver_opts = require("my.lsp.tsserver")
---     opts = vim.tbl_deep_extend("keep", tsserver_opts, opts)
---   end
---
---   if server.name == "jsonls" then
---     local jsonls_opts = require("my.lsp.jsonls")
---     opts = vim.tbl_deep_extend("force", jsonls_opts, opts)
---   end
---
---   if server.name == "sumneko_lua" then
---     local sumneko_opts = require("my.lsp.sumneko_lua")
---     opts = vim.tbl_deep_extend("force", sumneko_opts, opts)
---   end
---
---   if server.name == "pyright" then
---     local pyright_opts = require("my.lsp.pyright")
---     opts = vim.tbl_deep_extend("force", pyright_opts, opts)
---   end
---
---   -- This setup() function is exactly the same as lspconfig's setup function.
---   -- Refer to https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md
---   server:setup(opts)
--- end)
+-- =============================================================================
+--  DIAGNOSTICS & UI
+-- =============================================================================
 
 local signs = {
   { name = "DiagnosticSignError", text = "" },
@@ -133,6 +96,7 @@ vim.diagnostic.config({
   },
 })
 
+-- Toggle LSP Functions
 local lsp_is_on = true
 
 _G.turn_off_lsp = function()
@@ -168,6 +132,7 @@ end
 
 _G.turn_on_lsp()
 
+-- UI Borders
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
   border = "rounded",
 })
@@ -175,6 +140,11 @@ vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
 vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
   border = "rounded",
 })
+
+
+-- =============================================================================
+--  NULL-LS & FLUTTER
+-- =============================================================================
 
 -- https://github.com/jose-elias-alvarez/null-ls.nvim/tree/main/lua/null-ls/builtins/formatting
 local formatting = null_ls.builtins.formatting
@@ -191,5 +161,18 @@ null_ls.setup {
     -- diagnostics.flake8,
   },
 }
+
+-- =============================================================================
+--  HIGHLIGHT ON YANK (Copy)
+-- =============================================================================
+vim.api.nvim_create_autocmd("TextYankPost", {
+  group = vim.api.nvim_create_augroup("HighlightYank", { clear = true }),
+  callback = function()
+    vim.highlight.on_yank({
+      higroup = "IncSearch", -- The color group (IncSearch is usually yellow/orange)
+      timeout = 200,         -- How long the flash lasts (in milliseconds)
+    })
+  end,
+})
 
 require("flutter-tools").setup{} -- use defaults

@@ -72,16 +72,22 @@ packer.startup(function(use, use_rocks)
   use "rcarriga/nvim-notify"
 
   -- Gemini AI plugin
-  use {
-    'kiddos/gemini.nvim',
-    config = function()
-      require("gemini").setup({
-        completion = {
-          enabled = false,
-        }
-      })
-    end,
-  }
+  -- use {
+  --   'kiddos/gemini.nvim',
+  --   config = function()
+  --     require("gemini").setup({
+  --       completion = {
+  --         enabled = false,
+  --       },
+  --       hints = {
+  --         enabled = false,
+  --       },
+  --       instruction = {
+  --         enabled = false,
+  --       },
+  --     })
+  --   end,
+  -- }
 
   -- ai code completion
   -- use {
@@ -165,7 +171,7 @@ packer.startup(function(use, use_rocks)
   use 'Mofiqul/vscode.nvim'
   use 'kvrohit/substrata.nvim'
   use 'marko-cerovac/material.nvim'
-  use 'norcalli/nvim-colorizer.lua'
+  use "catgoose/nvim-colorizer.lua"
 
   use {'yamatsum/nvim-cursorline', config = function()
     vim.g.cursorword_highlight = false
@@ -177,7 +183,6 @@ packer.startup(function(use, use_rocks)
   -- Completion
   use "L3MON4D3/LuaSnip"
   use "hrsh7th/nvim-cmp"
-  -- use {"hrsh7th/nvim-cmp", commit = "dbc72290295cfc63075dab9ea635260d2b72f2e5"}
   use "hrsh7th/cmp-buffer"
   use "hrsh7th/cmp-path"
   use "hrsh7th/cmp-cmdline"
@@ -189,12 +194,12 @@ packer.startup(function(use, use_rocks)
   -- LSP
   use {
     "williamboman/mason.nvim",
-    {"williamboman/mason-lspconfig.nvim", tag = "v1.32.0"},
+    -- {"williamboman/mason-lspconfig.nvim", tag = "v1.32.0"},
+    "williamboman/mason-lspconfig.nvim",
     "neovim/nvim-lspconfig",
   }
-  -- use "williamboman/nvim-lsp-installer"
   use "b0o/schemastore.nvim"
-  use "jose-elias-alvarez/null-ls.nvim"
+  use "nvimtools/none-ls.nvim"
 
   -- Telescope
   -- download and install ripgrep deb from https://github.com/BurntSushi/ripgrep/releases
@@ -204,15 +209,14 @@ packer.startup(function(use, use_rocks)
 
   -- Treesitter
   use {"nvim-treesitter/nvim-treesitter", run = ":TSUpdate"}
-  use "nvim-treesitter/playground"
   use 'JoosepAlviste/nvim-ts-context-commentstring'
 
   -- Git
   use 'lewis6991/gitsigns.nvim'
 
   -- Explorer
-  use 'kyazdani42/nvim-web-devicons'
-  use 'kyazdani42/nvim-tree.lua'
+  use 'nvim-tree/nvim-web-devicons'
+  use 'nvim-tree/nvim-tree.lua'
 
   -- Tabline / Statusline
   use "ojroques/nvim-hardline"
