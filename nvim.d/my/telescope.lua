@@ -30,6 +30,8 @@ telescope.setup {
       '.pyc$',
       '.svg$',
       '.otf$', '.ttf$',
+      '.pdf$', '.pptx$', '.xlsx$', '.docx$',
+      '.jpg$', '.png$'
     },
 
     -- shorten, smart, absolute

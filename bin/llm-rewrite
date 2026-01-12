@@ -68,7 +68,8 @@ userquery=$(cat)
 echo "$text"
 
 # Define the vllm API endpoint URL
-vllm="https://askgenie-api.oagpuservices.com"
+# vllm="https://llm.oasishpc.hk"
+vllm="https://askgenie-gpt.oagpuservices.com"
 # Extract the filename from the filepath
 filename=$(basename "$filepath")
 
@@ -107,8 +108,9 @@ gen() {
   "
   # Create a JSON payload with the user prompt and max tokens
   json=$(jq -n --arg guide "$guide" --arg content "$prompt" '{
+    model: "gpt",
     messages: [{role: "user", content: $guide},{role: "user", content: $content}],
-    max_tokens: 512,
+    max_tokens: 4096,
     temperature: 0.7,
     top_p: 0.8,
   }')
@@ -119,6 +121,7 @@ gen() {
       "${vllm}/v1/chat/completions" \
       -H 'accept: application/json' \
       -H 'Content-Type: application/json' \
+      -H 'X-API-KEY: h9nswfH95gOBk5MmlViRw-6-Jh_swzEc6p-VIBHTQcQ' \
       -d "$json" | jq -r '.choices[0].message.content'
   )
 
