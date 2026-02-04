@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# Configuration
+API_KEY="FnIcCg5QUkHVg5qA8gundDokOBLfp71LGdLlLoZ5Cnk"
+API_URL="https://llm.oasishpc.hk/v1/chat/completions"
+MODEL="llama4-maverick"
+
+# 1. Dependency Check
+if ! command -v jq &> /dev/null; then
+    echo "❌ Error: 'jq' is not installed. Please install it."
+    exit 1
+fi
+
+# 2. Argument Validation
+prev_tag=$1
+curr_tag=$2
+
+if [[ -z "$prev_tag" || -z "$curr_tag" ]]; then
+    echo "Usage: $0 <previous_tag> <current_tag>"
+    echo "Example: $0 v1.0.0 v1.1.0"
+    exit 1
+fi
+
+# 3. Helper: Ensure Tag Exists
+ensure_tag_exists() {
+    local tag=$1
+    if ! git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "🔄 Tag '$tag' not found locally. Fetching tags..."
+        git fetch --tags >/dev/null 2>&1
+        if ! git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "❌ Error: Tag '$tag' does not exist in local or remote."
+            return 1
+        fi
+    fi
+}
+
+ensure_tag_exists "$prev_tag" || exit 1
+ensure_tag_exists "$curr_tag" || exit 1
+
+echo "🔍 Extracting git logs between $prev_tag and $curr_tag..."
+
+# 4. Get Git Logs
+git_logs=$(git log "${prev_tag}..${curr_tag}" --pretty=format:"%h - %s" --no-merges)
+
+if [[ -z "$git_logs" ]]; then
+    echo "⚠️ No commits found between these tags."
+    echo "💡 Hint: Ensure '$prev_tag' is OLDER than '$curr_tag'."
+    exit 1
+fi
+
+# 5. Construct JSON Payload
+system_prompt="You are an ERP Release Manager. Your task is to summarize raw git logs into a concise release summary for a non-technical audience."
+user_instruction="Analyze the following git commit logs. Identify the major functional changes and summarize them into a concise list with bullet points. Ignore trivial updates like typos, CI/CD configs, or formatting."
+
+json_payload=$(jq -n \
+              --arg model "$MODEL" \
+              --arg sys "$system_prompt" \
+              --arg user "$user_instruction" \
+              --arg logs "$git_logs" \
+              '{
+                model: $model,
+                messages: [
+                  {role: "system", content: $sys},
+                  {role: "user", content: ($user + "\n\nGit Logs:\n" + $logs)}
+                ],
+                max_tokens: 500
+              }')
+
+echo "🤖 Sending logs to LLM for summarization..."
+
+# 6. Call API
+response=$(curl -k -s -X POST "$API_URL" \
+  -H "X-API-KEY: $API_KEY" \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d "$json_payload")
+
+# 7. Parse Response with Error Handling
+summary=$(echo "$response" | jq -e -r '.choices[0].message.content' 2>/dev/null)
+
+if [[ $? -ne 0 ]]; then
+    echo ""
+    echo "❌ API Response Error. The server returned invalid JSON or an error."
+    echo "⬇️ RAW RESPONSE DUMP ⬇️"
+    echo "---------------------------------------------------"
+    echo "$response"
+    echo "---------------------------------------------------"
+    exit 1
+else
+    echo ""
+    echo "### Release Summary ($curr_tag)"
+    echo "---"
+    echo "$summary"
+    echo "---"
+fi
