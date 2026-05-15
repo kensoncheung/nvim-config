@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+curr_session=$(tmux display-message -p "#W")
+
+void_session="${curr_session}_void"
+
+need_create_void="0"
+
+if ! tmux has-session -t "${void_session}" 2>/dev/null; then
+  need_create_void="1"
+  index="0"
+else
+  index=`tmux list-windows -t "${void_session}" | awk "{print NR-1}" | tail -n1`
+fi
+
+pane_idx=`tmux display-message -p '#P'`
+process_name=`tmux display-message -p -t ${pane_idx} '#{pane_current_command}'`
+
+# tmux display-message "$void_session, $index, $pane_idx, $process_name"
+
+if [[ "$index" = "0" ]]; then
+  # no opencode inside void, so user is attempting to hide a opencode
+  if [[ "$process_name" != "opencode" ]]; then
+    # not a opencode pane, so create a new one
+    path=`tmux display-message -p "#{pane_current_path}"`
+    # tmux display-message "$path"
+    tmux split-window -c "$path" "opencode -c"
+
+    if [[ "$need_create_void" = "1" ]]; then
+      tmux new-session -d -s "$void_session"
+    fi
+
+    # old behavior, just raise error
+    # tmux display-message "Only opencode pane can be hide into void."
+  else
+    # move pane to void
+    tmux break-pane -d -t "${void_session}"
+  fi
+else
+  tmux join-pane -s "${void_session}:${index}"
+fi
