@@ -36,7 +36,7 @@ _G.console_ctl = function(cmd, size)
         run_cmd("tmux send-keys -t " .. paneId .. " " .. keys[i] .. " 2>/dev/null")
       end
     end
-    local actual_cmd = "zsh -c 'echo leftpane > /dev/null && " .. cmd .. "'"
+    local actual_cmd = "zsh -c 'echo leftpane > /dev/null && [ -f .envrc ] && source .envrc; " .. cmd .. "'"
     local subed = string.gsub(cmd, '"', '\\"')
     local percentage = size and "-l" .. size .. "%" or "-l32%"
 

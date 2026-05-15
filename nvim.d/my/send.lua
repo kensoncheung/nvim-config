@@ -123,6 +123,33 @@ M.send_current_cell = function(dir)
   end
 end
 
+M.send_current_file_path_to_next_pane = function()
+  local path = vim.fn.expand("%:.")
+  local mode = vim.api.nvim_get_mode().mode
+  local line_info = ""
+
+  if mode:match("[vV]") then
+    local start_line = vim.fn.line("v")
+    local end_line = vim.fn.line(".")
+    if start_line > end_line then
+      start_line, end_line = end_line, start_line
+    end
+    line_info = ":" .. start_line .. "-" .. end_line
+  else
+    line_info = ":" .. vim.fn.line(".")
+  end
+
+  M.send_line_to_next_pane("read " .. path .. line_info .. ". ")
+end
+
+vim.keymap.set("n", "dp", function()
+  M.send_current_file_path_to_next_pane()
+end, { desc = "send path:line to opencode" })
+
+vim.keymap.set("v", "dp", function()
+  M.send_current_file_path_to_next_pane()
+end, { desc = "send path:line to opencode" })
+
 M.run_popup = function(cmd)
   local cwd = vim.fn.getcwd()
   local fullcmd = "cd " .. cwd .. "; [ -f .envrc ] && source .envrc; " .. cmd
