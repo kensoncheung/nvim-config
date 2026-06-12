@@ -24,7 +24,7 @@ if [[ "$index" = "0" ]]; then
     # not a opencode pane, so create a new one
     path=`tmux display-message -p "#{pane_current_path}"`
     # tmux display-message "$path"
-    tmux split-window -c "$path" "opencode -c"
+    tmux split-window -h -c "$path" "opencode -c"
 
     if [[ "$need_create_void" = "1" ]]; then
       tmux new-session -d -s "$void_session"
@@ -37,5 +37,5 @@ if [[ "$index" = "0" ]]; then
     tmux break-pane -d -t "${void_session}"
   fi
 else
-  tmux join-pane -s "${void_session}:${index}"
+  tmux join-pane -h -s "${void_session}:${index}"
 fi
