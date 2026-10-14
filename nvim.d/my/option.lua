@@ -4,10 +4,13 @@ local o = vim.opt
 o.backup = false
 o.writebackup = false
 o.swapfile = false
-o.directory = "/home/kensoncheung/.config/nvim/tmp"
 o.undofile = true
-o.undodir = "/home/kensoncheung/.config/nvim/tmp"
 o.confirm = true
+
+-- Persistent undo history (portable: no hardcoded home path)
+local undodir = vim.fn.stdpath("config") .. "/tmp"
+vim.fn.mkdir(undodir, "p")
+o.undodir = undodir
 
 o.ruler = true
 o.linebreak = true

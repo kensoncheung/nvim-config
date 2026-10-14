@@ -226,9 +226,6 @@ packer.startup(function(use, use_rocks)
   use "kshenoy/vim-signature"    -- m* to toggle, display in sign bar
 
   -- Handy conversions
-  vim.cmd [[let g:VM_maps = {}]]
-  vim.cmd [[let g:VM_maps['Skip Region'] = '<C-x>']]
-  vim.cmd [[let g:VM_maps['Exit'] = '<C-c>']]
   -- use "mg979/vim-visual-multi"
   use "bronson/vim-trailing-whitespace"    -- try if this can be replaced by lsp auto format
   use "numToStr/Comment.nvim"

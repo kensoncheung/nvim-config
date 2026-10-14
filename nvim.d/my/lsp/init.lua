@@ -47,10 +47,23 @@ vim.api.nvim_create_autocmd("LspAttach", {
 -- We loop through servers that just need default config + capabilities
 local servers = { "eslint", "bashls", "pyright" }
 
+-- Per-server extras (salvaged from the old nvim.d/my/lsp/*.lua files)
+local server_settings = {
+  pyright = {
+    settings = {
+      python = {
+        analysis = {
+          typeCheckingMode = "off",
+        },
+      },
+    },
+  },
+}
+
 for _, server in ipairs(servers) do
-  vim.lsp.config(server, {
+  vim.lsp.config(server, vim.tbl_extend("force", {
     capabilities = capabilities,
-  })
+  }, server_settings[server] or {}))
   vim.lsp.enable(server)
 end
 
