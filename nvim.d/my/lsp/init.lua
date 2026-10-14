@@ -20,7 +20,7 @@ masonlsp.setup {
 }
 
 -- =============================================================================
---  LSP CONFIGURATION (Neovim 0.11+)
+--  LSP CONFIGURATION (Neovim 0.12+)
 -- =============================================================================
 
 -- 1. Capabilities (Required for nvim-cmp autocompletion)
@@ -133,12 +133,20 @@ end
 _G.turn_on_lsp()
 
 -- UI Borders
-vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-  border = "rounded",
-})
+-- Neovim 0.12 removed vim.lsp.with(): pass the window config to the handler
+-- directly, via the wildcard client config.
+local function with_rounded_border(handler)
+  return function(_, result, ctx, config)
+    config = vim.tbl_extend("force", config or {}, { border = "rounded" })
+    return handler(_, result, ctx, config)
+  end
+end
 
-vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-  border = "rounded",
+vim.lsp.config("*", {
+  handlers = {
+    ["textDocument/hover"] = with_rounded_border(vim.lsp.handlers.hover),
+    ["textDocument/signatureHelp"] = with_rounded_border(vim.lsp.handlers.signature_help),
+  },
 })
 
 

@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
 
-if nvim --version | head -n1 | grep -vq 0.11; then
-  echo "expected nvim 0.11, aborting..."
+# version_ge A B -> true when A >= B (dotted numeric; non-numeric junk ignored)
+version_ge() {
+  local IFS=.
+  local p1=${1#"${1%%[0-9]*}"} p2=${2#"${2%%[0-9]*}"}
+  local -a a=($p1) b=($p2)
+  local i x y
+  for i in 0 1 2 3; do
+    x=${a[i]:-0}; x=${x%%[!0-9]*}; x=${x:-0}
+    y=${b[i]:-0}; y=${y%%[!0-9]*}; y=${y:-0}
+    if ((x > y)); then return 0; fi
+    if ((x < y)); then return 1; fi
+  done
+  return 0
+}
+
+if nvim --version | head -n1 | grep -vq 0.12; then
+  echo "expected nvim 0.12, aborting..."
   exit 1
 fi
 
-if pip3 list | grep pynvim | grep -vq pynvim; then
-  echo "expected pynvim, aborting..."
-  exit 1
-fi
-
-if tmux -V | grep -vq 3.5; then
-  echo "expected tmux 3.5, aborting..."
+# tmux lowest version this config needs (popup windows: 3.2+)
+tmux_version=$(tmux -V | awk '{print $2}')
+if ! version_ge "$tmux_version" 3.4; then
+  echo "expected tmux >= 3.4, found $tmux_version, aborting..."
   exit 1
 fi
 

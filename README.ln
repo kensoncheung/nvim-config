@@ -6,6 +6,7 @@ How to use this repo
   fork it
   in nvim.d/my/keymap.lua, comment out lines started with "cancel"
   prepare the environment according to the following 2 sessions
+  install the pinned editor: ./scripts/install-nvim.sh
   run ./install.sh
   read every files, modify and experiment
 
