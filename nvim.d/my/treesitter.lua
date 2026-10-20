@@ -1,43 +1,38 @@
-local status_ok, configs = pcall(require, "nvim-treesitter.configs")
+-- nvim-treesitter 已切換到 main 分支（完整重寫）。
+-- main 不再提供 nvim-treesitter.configs / highlight / indent / playground 等模組，
+-- 高亮與縮排改由 Neovim 核心 API 驅動（參見 :h nvim-treesitter）。
+local status_ok, ts = pcall(require, "nvim-treesitter")
 if not status_ok then
   return
 end
 
--- now postresql is still under development
--- when ready, we can edit the below file to support embedded sql in javascript
--- vi ~/.local/share/nvim/site/pack/packer/start/nvim-treesitter/queries/ecma/injections.scm
+ts.setup {}
 
-configs.setup {
-  ensure_installed = "all", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
-  sync_install = false, -- install languages synchronously (only applied to `ensure_installed`)
-  ignore_install = { "" }, -- List of parsers to ignore installing
-  highlight = {
-    enable = true, -- false will disable the whole extension
-    disable = { "" }, -- list of language that will be disabled
-    additional_vim_regex_highlighting = true,
-  },
-  indent = { enable = true, disable = { "javascript" } },   -- turn off for js because it can't auto indent embedded sql
-  playground = {
-    enable = true,
-    disable = {},
-    updatetime = 25, -- Debounced time for highlighting nodes in the playground from source code
-    persist_queries = false, -- Whether the query persists across vim sessions
-    keybindings = {
-      toggle_query_editor = 'o',
-      toggle_hl_groups = 'i',
-      toggle_injected_languages = 't',
-      toggle_anonymous_nodes = 'a',
-      toggle_language_display = 'I',
-      focus_language = 'f',
-      unfocus_language = 'F',
-      update = 'R',
-      goto_node = '<cr>',
-      show_help = '?',
-    },
-  },
-  -- context_commentstring nvim-treesitter module is deprecated, use require('ts_context_commentstring').setup {} and set vim.g.skip_ts_context_commentstring_module = true to speed up loading instead.
-  -- context_commentstring = {
-  --   enable = true,
-  --   enable_autocmd = false,
-  -- },
-}
+-- 取代舊版 `ensure_installed = "all"`（非同步安裝缺少的 parser）
+ts.install "all"
+
+-- 取代舊版 `highlight = { enable = true }` 與 `indent = { enable = true, disable = { "javascript" } }`
+vim.api.nvim_create_autocmd("FileType", {
+  callback = function(args)
+    local buf = args.buf
+    local ft = vim.bo[buf].filetype
+    local lang = vim.treesitter.language.get_lang(ft)
+
+    if not lang or not vim.treesitter.language.add(lang) then
+      return
+    end
+
+    vim.treesitter.start(buf, lang)
+
+    if ft ~= "javascript" then
+      vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end
+  end,
+})
+
+-- 舊版內建的 context_commentstring 模組已移除，改用獨立外掛
+-- （JoosepAlviste/nvim-ts-context-commentstring）
+vim.g.skip_ts_context_commentstring_module = true
+pcall(function()
+  require("ts_context_commentstring").setup {}
+end)

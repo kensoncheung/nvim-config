@@ -51,7 +51,7 @@ map("n", "hl", "<cmd>Telescope find_files<cr>", opts)
 map("n", "<leader>ca", "<cmd>Telescope live_grep<cr>", opts)
 map("n", "<c-f>", "<cmd>Telescope grep_string<cr>", opts)
 map("n", "<c-t>", "<cmd>NvimTreeToggle<cr>", opts)
-map("n", "<leader>t", "<cmd>TSPlaygroundToggle<cr>", opts)
+map("n", "<leader>t", "<cmd>InspectTree<cr>", opts)
 map("n", "<leader>hg", '<cmd>echo synIDattr(synID(line("."),col("."),1),"name")<cr>', opts)
 map("n", "<leader>tl", '<cmd>lua toggle_lsp()<cr>', opts)
 map("n", "c*", '*Ncgn', opts)        -- c* to edit word under cursor, repeatable by the dot key

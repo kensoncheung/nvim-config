@@ -207,7 +207,7 @@ packer.startup(function(use, use_rocks)
   use 'nvim-telescope/telescope-media-files.nvim'
 
   -- Treesitter
-  use {"nvim-treesitter/nvim-treesitter", run = ":TSUpdate"}
+  use {"nvim-treesitter/nvim-treesitter", branch = "main", run = ":TSUpdate"}
   use 'JoosepAlviste/nvim-ts-context-commentstring'
 
   -- Git
