@@ -8,8 +8,22 @@ end
 
 ts.setup {}
 
--- 取代舊版 `ensure_installed = "all"`（非同步安裝缺少的 parser）
-ts.install "all"
+-- 取代舊版 `ensure_installed = "all"`：只補裝缺少的 parser
+-- （`install "all"` 會嘗試編譯全部 ~300 個 parser，且需要 `tree-sitter` CLI）
+local ensure = {
+  "lua", "luadoc", "vim", "vimdoc", "query", "bash", "python", "javascript", "typescript",
+  "tsx", "json", "yaml", "toml", "markdown", "markdown_inline", "html", "css", "go", "rust",
+  "c", "cpp", "diff", "gitcommit", "gitignore", "dockerfile", "regex", "comment",
+}
+local missing = {}
+for _, lang in ipairs(ensure) do
+  if not vim.treesitter.language.add(lang, { error = false }) then
+    table.insert(missing, lang)
+  end
+end
+if #missing > 0 then
+  ts.install(missing)
+end
 
 -- 取代舊版 `highlight = { enable = true }` 與 `indent = { enable = true, disable = { "javascript" } }`
 vim.api.nvim_create_autocmd("FileType", {
