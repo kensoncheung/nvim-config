@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+#
+# git-summarize-and-push — generate a Conventional Commits message from the diff with opencode,
+# then commit and push.
+#
+# Ported from dev-tools/env/bash_aliases_shared:git-submit.
+# opencode only produces the message; staging, commit and push are done by this script.
+#
+# Usage:
+#   git-summarize-and-push [--all] [--no-verify] [--no-push] [--dry-run] [<extra prompt...>]
+#     --all         stage everything first (git add -A), including untracked files and deletions
+#     --no-verify   skip pre-commit hooks
+#     --no-push     commit locally, do not push
+#     --dry-run     print the generated message, do not commit or push
+#     <extra>       appended to the prompt sent to the model
+#
+# Scope: by default only tracked changes are committed (git diff HEAD); untracked files are
+# reported but not added. Use --all to include them.
+#
+# Env overrides:
+#   GIT_SUMMARIZE_MODEL   model used for the message (default: google/gemini-3.5-flash-lite)
+#
+# Requirements: git, jq, opencode, and the opencode "commit-msg" agent.
+#
+set -euo pipefail
+
+usage() {
+  sed -n '3,23p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+all=0
+no_verify=0
+push=1
+dry_run=0
+extra_args=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --all) all=1 ;;
+    --no-verify) no_verify=1 ;;
+    --no-push) push=0 ;;
+    --dry-run) dry_run=1 ;;
+    --) shift; extra_args+=("$@"); break ;;
+    -*) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
+    *) extra_args+=("$1") ;;
+  esac
+  shift
+done
+
+for cmd in git jq opencode; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "❌ git-summarize-and-push: 找不到必要指令：$cmd" >&2
+    exit 1
+  fi
+done
+
+if ! repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  echo "❌ git-summarize-and-push: 目前目錄不在 git repo 內。" >&2
+  exit 1
+fi
+cd "$repo_root"
+
+if [ "$all" -eq 1 ]; then
+  git add -A || { echo "❌ git-summarize-and-push: git add -A 失敗，已中止。" >&2; exit 1; }
+fi
+
+if [ -z "$(git diff HEAD --name-only)" ]; then
+  echo "❌ git-summarize-and-push: 沒有已追蹤檔案的變更（未追蹤檔案需先 git add 或使用 --all）。目前狀態：" >&2
+  git status --short >&2
+  exit 1
+fi
+
+if [ "$all" -eq 0 ]; then
+  untracked=$(git ls-files --others --exclude-standard)
+  if [ -n "$untracked" ]; then
+    echo "⚠️  以下未追蹤檔案不會被提交（如需提交請先 git add 或使用 --all）："
+    printf '%s\n' "$untracked" | sed 's/^/   /'
+  fi
+fi
+
+tmp=$(mktemp "${TMPDIR:-/tmp}/git-summarize-XXXXXX") || exit 1
+trap 'rm -f "$tmp"' EXIT
+
+git diff HEAD > "$tmp"
+
+diff_size=$(wc -c < "$tmp" | tr -d ' ')
+extra=""
+if [ "${#extra_args[@]}" -gt 0 ]; then
+  extra="${extra_args[*]}"
+fi
+
+prompt_text="以下附件是一段 git diff，請據此產生 Conventional Commits 提交訊息。附件檔名（含亂數字串）僅為暫存檔，不是專案中的檔案，請完全忽略它、切勿在訊息中提及。"
+[ -n "$extra" ] && prompt_text="$prompt_text $extra"
+
+# Avoid overflowing the model context / opencode attachment limit on huge diffs.
+if [ "$diff_size" -gt 500000 ]; then
+  echo "ℹ️  變更體積較大 ($(( diff_size / 1024 )) KB)，自動降級使用檔案變更摘要產生提交訊息..."
+  {
+    echo "# Git Diff Stat Summary (Full diff exceeded size limit):"
+    git diff --stat HEAD
+    echo ""
+    echo "# Changed Files Status:"
+    git diff --name-status HEAD
+  } > "$tmp"
+  prompt_text="以下附件是一段因體積過大而降級的 git diff 檔案與統計摘要，請依據檔案路徑與變更規模推導產生 Conventional Commits 提交訊息。附件檔名（含亂數字串）僅為暫存檔，不是專案中的檔案，請完全忽略它、切勿在訊息中提及。"
+  [ -n "$extra" ] && prompt_text="$prompt_text $extra"
+fi
+
+model="${GIT_SUMMARIZE_MODEL:-google/gemini-3.5-flash-lite}"
+
+echo "🤖 產生提交訊息中..."
+msg=$(opencode run \
+        --agent commit-msg \
+        --model "$model" \
+        --format json \
+        "$prompt_text" \
+        --file "$tmp" 2>/dev/null \
+      | jq -rs '[.[] | select(.type == "text")] | last | .part.text') || msg=""
+
+if [ -z "$msg" ] || [ "$msg" = "null" ]; then
+  echo "❌ git-summarize-and-push: 無法從模型取得提交訊息。" >&2
+  exit 1
+fi
+
+if ! printf '%s\n' "$msg" | head -n1 | grep -Eq '^(feat|fix|refactor|docs|chore|test|perf|build|ci)(\([^)]+\))?: .+'; then
+  echo "❌ git-summarize-and-push: 模型輸出不符 Conventional Commits，已中止。原始輸出：" >&2
+  printf '%s\n' "$msg" >&2
+  exit 1
+fi
+
+echo "────── 提交訊息 ──────"
+printf '%s\n' "$msg"
+echo "──────────────────────"
+
+if [ "$dry_run" -eq 1 ]; then
+  echo "🧪 --dry-run：未執行 commit/push。"
+  exit 0
+fi
+
+commit_args=(-a -m "$msg")
+[ "$no_verify" -eq 1 ] && commit_args=(--no-verify "${commit_args[@]}")
+
+git commit "${commit_args[@]}" || { echo "❌ git-summarize-and-push: commit 失敗，已中止。" >&2; exit 1; }
+
+if [ "$push" -eq 1 ]; then
+  git push || { echo "❌ git-summarize-and-push: push 失敗（未強制推送），請檢查 remote 狀態。" >&2; exit 1; }
+fi
+
+git log -1 --pretty='✅ %h %s'

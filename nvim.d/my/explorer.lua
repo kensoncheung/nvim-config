@@ -3,9 +3,7 @@ if not status_ok then
   return
 end
 
-local core = require("nvim-tree.core")
-local lib = require("nvim-tree.lib")
-local open_file = require('nvim-tree.actions.node.open-file')
+local view = require("nvim-tree.view")
 
 -- https://github.com/nvim-tree/nvim-tree.lua/wiki/Migrating-To-on_attach
 local function on_attach(bufnr)
@@ -21,15 +19,14 @@ local function on_attach(bufnr)
   vim.keymap.set('n', '<c-t>', api.tree.close, opts('Close'))
   vim.keymap.set('n', 'x', api.node.navigate.parent_close, opts('Close Directory'))
   local open = function()
-    local node = lib.get_node_at_cursor()
-    if node.nodes ~= nil then
-      lib.expand_or_collapse(node)
-    else
-      open_file.fn("edit", node.absolute_path)
-      local explorer = core.get_explorer()
-      if explorer then
-        explorer.view:close(nil, "open-file.open_file_in_tab")
-      end
+    local node = api.tree.get_node_under_cursor()
+    if not node then
+      return
+    end
+    local is_dir = node.nodes ~= nil
+    api.node.open.edit(node)
+    if not is_dir then
+      view.close()
     end
   end
   vim.keymap.set('n', '<c-j>', open, opts('Toggle directory or edit file'))

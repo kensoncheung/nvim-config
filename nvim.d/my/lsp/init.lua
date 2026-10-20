@@ -16,7 +16,7 @@ if not ok5 then return end
 -- Setup Mason (Installer)
 mason.setup()
 masonlsp.setup {
-  ensure_installed = { "eslint", "bashls", "pyright", "ruff" },
+  ensure_installed = { "eslint", "bashls", "pyright", "ruff", "ts_ls", "jsonls", "lua_ls" },
 }
 
 -- =============================================================================
@@ -45,7 +45,15 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
 -- 3. Configure & Enable Standard Servers
 -- We loop through servers that just need default config + capabilities
-local servers = { "eslint", "bashls", "pyright" }
+local servers = { "eslint", "bashls", "pyright", "ts_ls", "jsonls", "lua_ls" }
+
+-- ts_ls: keep cmp capabilities but disable formatting (prettier via null-ls handles it)
+local ts_ls_capabilities = vim.deepcopy(capabilities)
+if ts_ls_capabilities.textDocument then
+  ts_ls_capabilities.textDocument.formatting = false
+  ts_ls_capabilities.textDocument.rangeFormatting = false
+  ts_ls_capabilities.textDocument.range_formatting = false
+end
 
 -- Per-server extras (salvaged from the old nvim.d/my/lsp/*.lua files)
 local server_settings = {
@@ -58,10 +66,50 @@ local server_settings = {
       },
     },
   },
+  ts_ls = {
+    capabilities = ts_ls_capabilities,
+    settings = {
+      documentFormatting = false,
+    },
+    init_options = {
+      hostInfo = "neovim",
+      preferences = {
+        disableSuggestions = true,
+      },
+    },
+  },
+  lua_ls = {
+    settings = {
+      Lua = {
+        diagnostics = {
+          globals = { "vim" },
+          disable = { "undefined-global" },
+        },
+        workspace = {
+          library = {
+            [vim.fn.expand("$VIMRUNTIME/lua")] = true,
+            [vim.fn.stdpath("config") .. "/lua"] = true,
+          },
+        },
+      },
+    },
+  },
 }
 
+-- jsonls: schema validation/code completion from schemastore
+local schemastore_ok, schemastore = pcall(require, "schemastore")
+if schemastore_ok then
+  server_settings.jsonls = {
+    settings = {
+      json = {
+        schemas = schemastore.json.schemas(),
+      },
+    },
+  }
+end
+
 for _, server in ipairs(servers) do
-  vim.lsp.config(server, vim.tbl_extend("force", {
+  vim.lsp.config(server, vim.tbl_deep_extend("force", {
     capabilities = capabilities,
   }, server_settings[server] or {}))
   vim.lsp.enable(server)

@@ -6,7 +6,13 @@ return {
   -- ctrl+0 to reset
   --
   check_for_updates = false,
-  font = wezterm.font("Fantasque Sans Mono", {weight="Regular"}),
+  font = wezterm.font_with_fallback {
+    { family = "Fantasque Sans Mono", weight = "Regular" },
+    { family = "Sarasa Term TC", weight = "Regular" },
+    { family = "Noto Sans CJK TC", weight = "Regular" },
+    { family = "Noto Color Emoji", weight = "Regular" },
+  },
+  warn_about_missing_glyphs = false,
   -- color_scheme = "Solarized Dark - Patched",
   -- color_scheme = "Batman",
   line_height = 1.1,

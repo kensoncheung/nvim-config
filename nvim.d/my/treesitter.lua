@@ -48,5 +48,16 @@ vim.api.nvim_create_autocmd("FileType", {
 -- （JoosepAlviste/nvim-ts-context-commentstring）
 vim.g.skip_ts_context_commentstring_module = true
 pcall(function()
+  -- Neovim 0.12 的 `get_parser()` 在 buffer 沒有對應 parser 時是「回傳 nil」而非拋錯，
+  -- 外掛的 `is_treesitter_active()` 只檢查 pcall 是否成功，因此仍會繼續執行，
+  -- 最後在 utils.lua 對 nil 呼叫 `:for_each_tree()`（CursorHold 時崩潰）。
+  -- 這裡補上「parser 是否真的存在」的檢查，讓沒有 parser 的 buffer
+  -- （qf、NvimTree、Telescope 等 UI buffer）直接跳過 context commentstring。
+  local utils = require("ts_context_commentstring.utils")
+  utils.is_treesitter_active = function(bufnr)
+    local ok, parser = pcall(vim.treesitter.get_parser, bufnr or 0)
+    return ok and parser ~= nil
+  end
+
   require("ts_context_commentstring").setup {}
 end)
